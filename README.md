@@ -35,7 +35,7 @@ In Supabase → **Authentication** → **Users**, create an email/password accou
 
 ### 3. Link auth accounts to partners
 
-Marcel is already set to `marcelbrown413@gmail.com` in `0002_roles_rls.sql`.
+Marcel is linked by email in `0002_roles_rls.sql` (set there when you run migrations).
 
 For Delton and Richard (after creating their Auth users):
 
@@ -48,10 +48,14 @@ On first sign-in the app links `auth_user_id` automatically.
 
 ### 4. Environment variables
 
+Copy `.env.example` to `.env` and fill in your Supabase project values (Project Settings → API):
+
 ```
-VITE_SUPABASE_URL=https://gfsaxcnodjcvxpegooat.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
+
+Never commit `.env`. On Netlify, set the same variables under Site settings → Environment variables.
 
 ### 5. Install and run
 
