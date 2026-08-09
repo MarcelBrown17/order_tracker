@@ -1,39 +1,41 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
+import { groupOrders } from '../lib/orderGroups'
 import Money from '../components/Money.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import BaseButton from '../components/BaseButton.vue'
+import AppLoader from '../components/AppLoader.vue'
+import { useToast } from '../composables/useToast'
 
 const auth = useAuthStore()
 const ordersStore = useOrdersStore()
 const router = useRouter()
+const toast = useToast()
 
 const status = ref('all')
 const search = ref('')
 const loading = ref(false)
-const error = ref('')
 
 const filters = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'all', label: 'Active' },
   { value: 'paid', label: 'Paid' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
+const groupedOrders = computed(() => groupOrders(ordersStore.orders))
+
 async function load() {
   loading.value = true
-  error.value = ''
   try {
     await ordersStore.fetchOrders({
       status: status.value,
       search: search.value,
-      createdBy: auth.isAdmin ? null : auth.partner?.id,
     })
   } catch (e) {
-    error.value = e.message || 'Failed to load orders'
+    toast.error(e.message || 'Failed to load orders')
   } finally {
     loading.value = false
   }
@@ -53,19 +55,32 @@ function openOrder(id) {
   router.push({ name: 'order-detail', params: { id } })
 }
 
-function sellTotal(o) {
-  return Number(o.unit_sell_price) * Number(o.quantity)
+function productSummary(group) {
+  if (group.items.length === 1) {
+    const item = group.items[0]
+    return `${item.product_name} · Qty ${item.quantity}`
+  }
+  return group.items
+    .map((item) => `${item.product_name} × ${item.quantity}`)
+    .join(', ')
+}
+
+function orderTypeLabel(type) {
+  if (type === 'all' || type === 'both') return 'All'
+  if (type === 'richard') return 'Richard'
+  if (type === 'delton') return 'Delton'
+  return 'Admin'
 }
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="bakery-shell bakery-stack">
     <div class="flex items-start justify-between gap-3">
       <div>
         <h1 class="page-title">Orders</h1>
         <p class="page-subtitle">
           <template v-if="auth.isAdmin">Filter and search customer orders</template>
-          <template v-else>Orders you have logged</template>
+          <template v-else>Orders linked to you</template>
         </p>
       </div>
       <BaseButton
@@ -77,77 +92,105 @@ function sellTotal(o) {
       </BaseButton>
     </div>
 
-    <div class="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-      <button
-        v-for="f in filters"
-        :key="f.value"
-        type="button"
-        class="filter-chip"
-        :class="{ 'filter-chip--active': status === f.value }"
-        @click="status = f.value"
-      >
-        {{ f.label }}
-      </button>
+    <div class="orders-toolbar">
+      <label class="search-field" for="search">
+        <span class="sr-only">Search customer</span>
+        <svg
+          class="search-field__icon"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.25"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          id="search"
+          v-model="search"
+          type="search"
+          class="search-field__input"
+          placeholder="Search by customer name…"
+          autocomplete="off"
+        />
+        <button
+          v-if="search"
+          type="button"
+          class="search-field__clear"
+          aria-label="Clear search"
+          @click="search = ''"
+        >
+          Clear
+        </button>
+      </label>
+
+      <div class="orders-filters">
+        <button
+          v-for="f in filters"
+          :key="f.value"
+          type="button"
+          class="filter-chip"
+          :class="{ 'filter-chip--active': status === f.value }"
+          @click="status = f.value"
+        >
+          {{ f.label }}
+        </button>
+      </div>
     </div>
 
-    <div class="form-field">
-      <label for="search">Search customer</label>
-      <input
-        id="search"
-        v-model="search"
-        type="search"
-        placeholder="Customer name…"
-      />
-    </div>
-
-    <p v-if="loading" class="text-sm text-muted">Loading…</p>
-    <p v-else-if="error" class="text-sm text-red-700">{{ error }}</p>
+    <AppLoader v-if="loading" label="Loading orders" />
 
     <template v-else>
-      <!-- Mobile cards -->
       <div class="space-y-2.5 md:hidden">
         <button
-          v-for="o in ordersStore.orders"
-          :key="o.id"
+          v-for="group in groupedOrders"
+          :key="group.groupId"
           type="button"
           class="list-card w-full text-left"
-          @click="openOrder(o.id)"
+          @click="openOrder(group.id)"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="truncate font-bold">{{ o.customer_name }}</p>
-              <p v-if="o.company" class="truncate text-sm text-muted">
-                {{ o.company }}
+              <p class="truncate font-bold">{{ group.customer_name }}</p>
+              <p v-if="group.company" class="truncate text-sm text-muted">
+                {{ group.company }}
               </p>
             </div>
-            <StatusBadge :status="o.status" />
+            <StatusBadge :status="group.status" />
           </div>
-          <p class="text-sm text-muted">{{ o.product_name }} · Qty {{ o.quantity }}</p>
+          <p class="text-sm text-muted">{{ productSummary(group) }}</p>
+          <p v-if="auth.isAdmin" class="text-xs font-semibold text-muted">
+            {{ orderTypeLabel(group.order_type) }}
+          </p>
           <div class="flex items-center justify-between text-sm">
-            <span class="text-muted">{{ o.order_date }}</span>
+            <span class="text-muted">{{ group.order_date }}</span>
             <span class="font-bold">
-              <Money :value="sellTotal(o)" tone="owed" />
+              <Money :value="group.sellTotal" />
             </span>
           </div>
           <div v-if="auth.isAdmin" class="flex items-center justify-between text-sm">
             <span class="text-muted">Profit</span>
-            <Money :value="o.profit_total" tone="profit" />
+            <Money :value="group.profitTotal" tone="profit" />
           </div>
         </button>
-        <p v-if="!ordersStore.orders.length" class="text-sm text-muted">
+        <p v-if="!groupedOrders.length" class="text-sm text-muted">
           No orders found
         </p>
       </div>
 
-      <!-- Desktop table -->
       <div class="table-wrap hidden md:block">
         <table>
           <thead>
             <tr>
               <th>Date</th>
               <th>Customer</th>
-              <th>Product</th>
-              <th>Qty</th>
+              <th>Products</th>
+              <th v-if="auth.isAdmin">Type</th>
               <th>Sell total</th>
               <th v-if="auth.isAdmin">Profit</th>
               <th>Status</th>
@@ -155,25 +198,25 @@ function sellTotal(o) {
           </thead>
           <tbody>
             <tr
-              v-for="o in ordersStore.orders"
-              :key="o.id"
-              @click="openOrder(o.id)"
+              v-for="group in groupedOrders"
+              :key="group.groupId"
+              @click="openOrder(group.id)"
             >
-              <td>{{ o.order_date }}</td>
+              <td>{{ group.order_date }}</td>
               <td>
-                <span class="font-semibold">{{ o.customer_name }}</span>
-                <span v-if="o.company" class="block text-muted">{{ o.company }}</span>
+                <span class="font-semibold">{{ group.customer_name }}</span>
+                <span v-if="group.company" class="block text-muted">{{ group.company }}</span>
               </td>
-              <td>{{ o.product_name }}</td>
-              <td>{{ o.quantity }}</td>
-              <td><Money :value="sellTotal(o)" tone="owed" /></td>
+              <td class="max-w-xs">{{ productSummary(group) }}</td>
+              <td v-if="auth.isAdmin">{{ orderTypeLabel(group.order_type) }}</td>
+              <td><Money :value="group.sellTotal" /></td>
               <td v-if="auth.isAdmin">
-                <Money :value="o.profit_total" tone="profit" />
+                <Money :value="group.profitTotal" tone="profit" />
               </td>
-              <td><StatusBadge :status="o.status" /></td>
+              <td><StatusBadge :status="group.status" /></td>
             </tr>
-            <tr v-if="!ordersStore.orders.length">
-              <td :colspan="auth.isAdmin ? 7 : 6" class="text-muted">No orders found</td>
+            <tr v-if="!groupedOrders.length">
+              <td :colspan="auth.isAdmin ? 7 : 5" class="text-muted">No orders found</td>
             </tr>
           </tbody>
         </table>

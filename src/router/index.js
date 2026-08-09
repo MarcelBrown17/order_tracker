@@ -4,6 +4,16 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
+    path: '/',
+    name: 'request-biscuits',
+    component: () => import('../views/RequestBiscuits.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/request',
+    redirect: { name: 'request-biscuits' },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('../views/Login.vue'),
@@ -14,7 +24,7 @@ const routes = [
     component: () => import('../components/AppLayout.vue'),
     children: [
       {
-        path: '',
+        path: 'new',
         name: 'new-order',
         component: () => import('../views/NewOrder.vue'),
       },
@@ -39,9 +49,10 @@ const routes = [
       },
       {
         path: 'orders/:id/edit',
-        name: 'edit-order',
-        component: () => import('../views/NewOrder.vue'),
-        meta: { admin: true },
+        redirect: (to) => ({
+          name: 'order-detail',
+          params: { id: to.params.id },
+        }),
       },
       {
         path: 'products',
@@ -81,7 +92,7 @@ router.beforeEach(async (to) => {
     return { name: 'new-order' }
   }
 
-  if (session && !auth.partner && to.name !== 'login') {
+  if (session && !auth.partner && to.name !== 'login' && to.name !== 'request-biscuits') {
     // Still allow dashboard so we can show the "not linked" message
     if (to.meta.admin || to.name === 'new-order') {
       return { name: 'dashboard' }

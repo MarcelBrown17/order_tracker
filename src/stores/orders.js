@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 export const useOrdersStore = defineStore('orders', () => {
   const orders = ref([])
   const currentOrder = ref(null)
+  const currentOrderGroup = ref([])
   const currentSplits = ref([])
   const loading = ref(false)
   const error = ref(null)
@@ -22,7 +23,10 @@ export const useOrdersStore = defineStore('orders', () => {
       .order('order_date', { ascending: false })
       .order('created_at', { ascending: false })
 
-    if (status && status !== 'all') {
+    if (status === 'all' || !status) {
+      // Default list: open orders only (hide paid + cancelled)
+      query = query.eq('status', 'pending')
+    } else {
       query = query.eq('status', status)
     }
     if (search.trim()) {
@@ -59,6 +63,33 @@ export const useOrdersStore = defineStore('orders', () => {
     return data
   }
 
+  async function fetchOrderGroup(id) {
+    const order = await fetchOrder(id)
+    const { data, error: err } = await supabase
+      .from('order_summary')
+      .select('*')
+      .eq('order_group_id', order.order_group_id)
+      .order('created_at')
+    if (err) throw err
+    currentOrderGroup.value = data ?? [order]
+    return currentOrderGroup.value
+  }
+
+  async function fetchSplitsForGroup(orderIds) {
+    if (!orderIds.length) {
+      currentSplits.value = []
+      return []
+    }
+    const { data, error: err } = await supabase
+      .from('order_splits')
+      .select('*, users(id, name)')
+      .in('order_id', orderIds)
+      .order('created_at')
+    if (err) throw err
+    currentSplits.value = data ?? []
+    return currentSplits.value
+  }
+
   async function fetchSplits(orderId) {
     const { data, error: err } = await supabase
       .from('order_splits')
@@ -78,6 +109,31 @@ export const useOrdersStore = defineStore('orders', () => {
       .single()
     if (err) throw err
     return data
+  }
+
+  async function deleteOrderLine(id) {
+    const { error: err } = await supabase.from('orders').delete().eq('id', id)
+    if (err) throw err
+    currentOrderGroup.value = currentOrderGroup.value.filter((line) => line.id !== id)
+    currentSplits.value = currentSplits.value.filter((s) => s.order_id !== id)
+  }
+
+  async function createOrdersBatch({ shared, items, orderGroupId }) {
+    const rows = items.map((item) => ({
+      ...shared,
+      product_id: item.product_id,
+      quantity: Number(item.quantity),
+      unit_sell_price: Number(item.unit_sell_price),
+      unit_cost: Number(item.unit_cost),
+      is_bulk: !!item.is_bulk,
+      order_group_id: orderGroupId,
+    }))
+    const { data, error: err } = await supabase
+      .from('orders')
+      .insert(rows)
+      .select()
+    if (err) throw err
+    return data ?? []
   }
 
   async function updateOrder(id, payload) {
@@ -103,6 +159,12 @@ export const useOrdersStore = defineStore('orders', () => {
         status: data.status,
       }
     }
+    if (currentOrderGroup.value.length) {
+      const groupId = currentOrderGroup.value[0]?.order_group_id
+      currentOrderGroup.value = currentOrderGroup.value.map((line) =>
+        line.order_group_id === groupId ? { ...line, status } : line
+      )
+    }
     const idx = orders.value.findIndex((o) => o.id === id)
     if (idx !== -1) {
       orders.value[idx] = { ...orders.value[idx], status }
@@ -124,11 +186,22 @@ export const useOrdersStore = defineStore('orders', () => {
   }
 
   async function deleteOrder(id) {
-    const { error: err } = await supabase.from('orders').delete().eq('id', id)
+    const order = currentOrder.value?.id === id
+      ? currentOrder.value
+      : orders.value.find((o) => o.id === id)
+    const groupId = order?.order_group_id || id
+
+    const { error: err } = await supabase
+      .from('orders')
+      .delete()
+      .eq('order_group_id', groupId)
     if (err) throw err
-    orders.value = orders.value.filter((o) => o.id !== id)
-    if (currentOrder.value?.id === id) {
+    orders.value = orders.value.filter(
+      (o) => (o.order_group_id || o.id) !== groupId
+    )
+    if (currentOrder.value && (currentOrder.value.order_group_id || currentOrder.value.id) === groupId) {
       currentOrder.value = null
+      currentOrderGroup.value = []
       currentSplits.value = []
     }
   }
@@ -165,10 +238,17 @@ export const useOrdersStore = defineStore('orders', () => {
         o.order_date <= monthEnd
     )
 
-    const activeSplits = allSplits.filter((s) => s.orders?.status !== 'cancelled')
+    const thisMonthPaid = thisMonth.filter((o) => o.status === 'paid')
+
+    const thisMonthGroupIds = new Set(
+      thisMonth.map((o) => o.order_group_id || o.id)
+    )
+
+    // Commissions only count once the customer has paid
+    const paidOrderSplits = allSplits.filter((s) => s.orders?.status === 'paid')
 
     const partnerStats = partners.map((u) => {
-      const splits = activeSplits.filter((s) => s.user_id === u.id)
+      const splits = paidOrderSplits.filter((s) => s.user_id === u.id)
       const unpaid = splits
         .filter((s) => !s.paid_out)
         .reduce((sum, s) => sum + Number(s.amount), 0)
@@ -180,20 +260,22 @@ export const useOrdersStore = defineStore('orders', () => {
     })
 
     return {
-      totalOrdersMonth: thisMonth.length,
-      totalRevenueMonth: thisMonth.reduce(
+      totalOrdersMonth: thisMonthGroupIds.size,
+      totalRevenueMonth: thisMonthPaid.reduce(
         (sum, o) => sum + Number(o.unit_sell_price) * Number(o.quantity),
         0
       ),
-      totalProfitMonth: thisMonth.reduce(
+      totalProfitMonth: thisMonthPaid.reduce(
         (sum, o) => sum + Number(o.profit_total),
         0
       ),
-      unpaidSplitsTotal: activeSplits
+      unpaidSplitsTotal: paidOrderSplits
         .filter((s) => !s.paid_out)
         .reduce((sum, s) => sum + Number(s.amount), 0),
       partnerStats,
-      recentOrders: allOrders.slice(0, 5),
+      recentOrders: allOrders
+        .filter((o) => o.status !== 'cancelled')
+        .slice(0, 5),
     }
   }
 
@@ -220,36 +302,45 @@ export const useOrdersStore = defineStore('orders', () => {
 
   async function fetchPartnerDashboard(partnerId) {
     const splits = await fetchMySplits()
-    const active = splits.filter((s) => s.order_status !== 'cancelled')
-    const unpaid = active
+    const paidOrders = splits.filter((s) => s.order_status === 'paid')
+    const pendingOrders = splits.filter((s) => s.order_status === 'pending')
+    const unpaid = paidOrders
       .filter((s) => !s.paid_out)
       .reduce((sum, s) => sum + Number(s.amount), 0)
-    const paid = active
+    const paid = paidOrders
       .filter((s) => s.paid_out)
       .reduce((sum, s) => sum + Number(s.amount), 0)
-    const earned = active.reduce((sum, s) => sum + Number(s.amount), 0)
+    const earned = paidOrders.reduce((sum, s) => sum + Number(s.amount), 0)
+    const awaiting = pendingOrders.reduce((sum, s) => sum + Number(s.amount), 0)
 
     return {
       partnerId,
       unpaid,
       paid,
       earned,
-      recentSplits: splits.slice(0, 8),
-      splits,
+      awaiting,
+      recentSplits: [...paidOrders, ...pendingOrders].slice(0, 8),
+      splits: paidOrders,
+      pendingSplits: pendingOrders,
     }
   }
 
   return {
     orders,
     currentOrder,
+    currentOrderGroup,
     currentSplits,
     loading,
     error,
     fetchOrders,
     fetchOrder,
+    fetchOrderGroup,
     fetchSplits,
+    fetchSplitsForGroup,
     createOrder,
+    createOrdersBatch,
     updateOrder,
+    deleteOrderLine,
     updateStatus,
     setSplitPaid,
     deleteOrder,

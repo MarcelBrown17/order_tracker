@@ -9,9 +9,11 @@ const props = defineProps({
 })
 
 const styles = {
-  pending: 'bg-amber-100 text-amber-900',
-  paid: 'bg-sky-100 text-sky-900',
-  cancelled: 'bg-stone-200 text-stone-600',
+  pending:
+    'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200',
+  paid: 'bg-sky-100 text-sky-900 dark:bg-sky-500/15 dark:text-sky-200',
+  cancelled:
+    'bg-stone-200 text-stone-600 dark:bg-neutral-500/20 dark:text-neutral-300',
 }
 
 const label = computed(() => {

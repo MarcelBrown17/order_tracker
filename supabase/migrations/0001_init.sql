@@ -1,4 +1,4 @@
--- Biscuit Order Tracker — initial schema
+-- Biscuit Order Tracker - initial schema
 -- Run this in the Supabase SQL Editor (or via supabase db push)
 
 -- ---------------------------------------------------------------------------

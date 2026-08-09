@@ -2,7 +2,7 @@
 -- Safe to re-run. Run after 0001_init.sql
 
 -- ---------------------------------------------------------------------------
--- Partner identity (one column at a time — avoids ALTER failures)
+-- Partner identity (one column at a time - avoids ALTER failures)
 -- ---------------------------------------------------------------------------
 
 alter table public.users
@@ -124,7 +124,7 @@ $$;
 revoke all on function private.is_admin() from public;
 revoke all on function private.partner_id() from public;
 
--- Policies + my_splits call the private helpers directly — authenticated must execute them
+-- Policies + my_splits call the private helpers directly - authenticated must execute them
 grant usage on schema private to authenticated;
 grant execute on function private.is_admin() to authenticated;
 grant execute on function private.partner_id() to authenticated;

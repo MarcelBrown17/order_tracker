@@ -1,16 +1,29 @@
 import { ref, computed } from 'vue'
+import gsap from 'gsap'
 
 const theme = ref('light')
 let initialized = false
 
-function apply(next) {
-  theme.value = next === 'dark' ? 'dark' : 'light'
-  document.documentElement.classList.toggle('dark', theme.value === 'dark')
-  document.documentElement.style.colorScheme = theme.value
-  try {
-    localStorage.setItem('theme', theme.value)
-  } catch {
-    /* ignore */
+function apply(next, { animate = false, persist = true } = {}) {
+  const resolved = next === 'dark' ? 'dark' : 'light'
+  theme.value = resolved
+  document.documentElement.classList.toggle('dark', resolved === 'dark')
+  document.documentElement.style.colorScheme = resolved
+
+  if (persist) {
+    try {
+      localStorage.setItem('theme', resolved)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (animate && typeof document !== 'undefined') {
+    gsap.fromTo(
+      document.body,
+      { opacity: 0.82 },
+      { opacity: 1, duration: 0.35, ease: 'power2.out' }
+    )
   }
 }
 
@@ -29,7 +42,7 @@ export function useTheme() {
   const isDark = computed(() => theme.value === 'dark')
 
   function toggleTheme() {
-    apply(theme.value === 'dark' ? 'light' : 'dark')
+    apply(theme.value === 'dark' ? 'light' : 'dark', { animate: true })
   }
 
   return {

@@ -26,6 +26,8 @@ const emit = defineEmits(['update:modelValue', 'change'])
 
 const open = ref(false)
 const root = ref(null)
+const menu = ref(null)
+const menuStyle = ref({})
 const listId = `select-list-${Math.random().toString(36).slice(2, 9)}`
 
 const selectedLabel = computed(() => {
@@ -35,6 +37,22 @@ const selectedLabel = computed(() => {
 
 function close() {
   open.value = false
+}
+
+function positionMenu() {
+  if (!root.value) return
+  const rect = root.value.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const openUp = spaceBelow < 220 && rect.top > spaceBelow
+  menuStyle.value = {
+    position: 'fixed',
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    zIndex: '90',
+    ...(openUp
+      ? { bottom: `${window.innerHeight - rect.top + 6}px`, top: 'auto' }
+      : { top: `${rect.bottom + 6}px`, bottom: 'auto' }),
+  }
 }
 
 function toggle() {
@@ -50,8 +68,10 @@ function selectOption(option) {
 }
 
 function onDocumentPointer(e) {
-  if (!open.value || !root.value) return
-  if (!root.value.contains(e.target)) close()
+  if (!open.value) return
+  const inRoot = root.value?.contains(e.target)
+  const inMenu = menu.value?.contains(e.target)
+  if (!inRoot && !inMenu) close()
 }
 
 function onKeydown(e) {
@@ -62,25 +82,40 @@ function onKeydown(e) {
   }
 }
 
+function onReposition() {
+  if (open.value) positionMenu()
+}
+
 watch(open, async (isOpen) => {
   if (isOpen) {
     await nextTick()
+    positionMenu()
     document.addEventListener('pointerdown', onDocumentPointer)
     document.addEventListener('keydown', onKeydown)
+    window.addEventListener('resize', onReposition)
+    window.addEventListener('scroll', onReposition, true)
   } else {
     document.removeEventListener('pointerdown', onDocumentPointer)
     document.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('resize', onReposition)
+    window.removeEventListener('scroll', onReposition, true)
   }
 })
 
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onDocumentPointer)
   document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', onReposition)
+  window.removeEventListener('scroll', onReposition, true)
 })
 </script>
 
 <template>
-  <div ref="root" class="base-select" :class="{ 'base-select--open': open, 'base-select--disabled': disabled }">
+  <div
+    ref="root"
+    class="base-select"
+    :class="{ 'base-select--open': open, 'base-select--disabled': disabled }"
+  >
     <button
       :id="id || undefined"
       type="button"
@@ -114,29 +149,33 @@ onUnmounted(() => {
       </svg>
     </button>
 
-    <ul
-      v-show="open"
-      :id="listId"
-      class="base-select__menu"
-      role="listbox"
-      :aria-labelledby="id || undefined"
-    >
-      <li
-        v-for="option in options"
-        :key="String(option.value)"
-        role="option"
-        class="base-select__option"
-        :class="{
-          'base-select__option--selected': String(option.value) === String(modelValue),
-          'base-select__option--disabled': option.disabled,
-        }"
-        :aria-selected="String(option.value) === String(modelValue)"
-        :aria-disabled="option.disabled || undefined"
-        @click="selectOption(option)"
+    <Teleport to="body">
+      <ul
+        v-show="open"
+        ref="menu"
+        :id="listId"
+        class="base-select__menu"
+        role="listbox"
+        :aria-labelledby="id || undefined"
+        :style="menuStyle"
       >
-        {{ option.label }}
-      </li>
-    </ul>
+        <li
+          v-for="option in options"
+          :key="String(option.value)"
+          role="option"
+          class="base-select__option"
+          :class="{
+            'base-select__option--selected': String(option.value) === String(modelValue),
+            'base-select__option--disabled': option.disabled,
+          }"
+          :aria-selected="String(option.value) === String(modelValue)"
+          :aria-disabled="option.disabled || undefined"
+          @click="selectOption(option)"
+        >
+          {{ option.label }}
+        </li>
+      </ul>
+    </Teleport>
   </div>
 </template>
 
@@ -209,13 +248,11 @@ onUnmounted(() => {
 .base-select--open .base-select__chevron {
   transform: rotate(180deg);
 }
+</style>
 
+<style>
+/* Teleported menu (not scoped) */
 .base-select__menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 0.35rem);
-  left: 0;
-  right: 0;
   margin: 0;
   padding: 0.35rem;
   list-style: none;

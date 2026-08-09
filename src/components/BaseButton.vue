@@ -15,7 +15,7 @@ defineProps({
 
 const variants = {
   primary:
-    'bg-accent text-white hover:bg-accent-hover active:bg-accent-hover disabled:opacity-50 shadow-sm',
+    'bg-accent text-white hover:bg-accent-hover active:bg-accent-hover disabled:opacity-50 shadow-[0_10px_20px_-8px_color-mix(in_srgb,var(--color-accent)_55%,transparent)]',
   secondary:
     'bg-surface text-text border border-border hover:bg-page active:bg-page disabled:opacity-50',
   destructive:

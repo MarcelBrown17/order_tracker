@@ -5,13 +5,15 @@ import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import Money from '../components/Money.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import AppLoader from '../components/AppLoader.vue'
+import { useToast } from '../composables/useToast'
 
 const auth = useAuthStore()
 const ordersStore = useOrdersStore()
 const router = useRouter()
+const toast = useToast()
 
 const loading = ref(true)
-const error = ref('')
 const stats = ref(null)
 const partnerStats = ref(null)
 
@@ -28,7 +30,7 @@ onMounted(async () => {
       )
     }
   } catch (e) {
-    error.value = e.message || 'Failed to load dashboard'
+    toast.error(e.message || 'Failed to load dashboard')
   } finally {
     loading.value = false
   }
@@ -40,17 +42,17 @@ function openOrder(id) {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="bakery-shell bakery-stack">
     <div>
-      <h1 class="page-title">Home</h1>
+      <h1 class="page-title">Dashboard</h1>
       <p class="page-subtitle">
-        <template v-if="auth.isAdmin">This month and partner splits</template>
-        <template v-else>Your share of profit across all orders</template>
+        <template v-if="auth.isAdmin">This month and partner commissions</template>
+        <template v-else>Your commissions across orders</template>
       </p>
     </div>
 
     <div
-      v-if="!auth.isLinked"
+      v-if="!auth.isLinked && !auth.loading"
       class="surface-card p-4 text-sm"
     >
       <p class="font-bold">Account not linked</p>
@@ -62,8 +64,7 @@ function openOrder(id) {
     </div>
 
     <template v-else>
-      <p v-if="loading" class="text-sm text-muted">Loading…</p>
-      <p v-else-if="error" class="text-sm text-red-700">{{ error }}</p>
+      <AppLoader v-if="loading" label="Loading home" />
 
       <template v-else-if="auth.isAdmin && stats">
         <div class="grid grid-cols-2 gap-3">
@@ -79,21 +80,21 @@ function openOrder(id) {
             <p class="mt-1 text-xl font-extrabold">
               <Money :value="stats.totalRevenueMonth" />
             </p>
-            <p class="mt-0.5 text-xs text-muted">This month</p>
+            <p class="mt-0.5 text-xs text-muted">Paid orders this month</p>
           </div>
           <div class="surface-card p-3.5">
             <p class="section-label">Profit</p>
             <p class="mt-1 text-xl font-extrabold">
               <Money :value="stats.totalProfitMonth" tone="profit" />
             </p>
-            <p class="mt-0.5 text-xs text-muted">This month</p>
+            <p class="mt-0.5 text-xs text-muted">Paid orders this month</p>
           </div>
           <div class="surface-card p-3.5">
-            <p class="section-label">Unpaid</p>
+            <p class="section-label">Payable</p>
             <p class="mt-1 text-xl font-extrabold">
               <Money :value="stats.unpaidSplitsTotal" tone="owed" />
             </p>
-            <p class="mt-0.5 text-xs text-muted">Partner splits</p>
+            <p class="mt-0.5 text-xs text-muted">Ready to pay partners</p>
           </div>
         </div>
 
@@ -112,11 +113,11 @@ function openOrder(id) {
                 </span>
               </p>
               <div class="flex justify-between text-sm">
-                <span class="text-muted">Owed</span>
+                <span class="text-muted">Payable now</span>
                 <Money :value="p.unpaid" tone="owed" />
               </div>
               <div class="flex justify-between text-sm">
-                <span class="text-muted">Paid out</span>
+                <span class="text-muted">Already paid</span>
                 <span class="font-semibold tabular-nums">
                   <Money :value="p.paid" />
                 </span>
@@ -194,24 +195,61 @@ function openOrder(id) {
             <p class="mt-1 text-3xl font-extrabold">
               <Money :value="partnerStats.unpaid" tone="owed" />
             </p>
+            <p class="mt-1 text-xs text-muted">
+              Ready once the customer order is marked paid
+            </p>
           </div>
           <div class="grid grid-cols-2 gap-3">
+            <div class="surface-card p-3.5">
+              <p class="section-label">Awaiting payment</p>
+              <p class="mt-1 text-xl font-extrabold">
+                <Money :value="partnerStats.awaiting" />
+              </p>
+              <p class="mt-0.5 text-xs text-muted">On open orders</p>
+            </div>
             <div class="surface-card p-3.5">
               <p class="section-label">Paid out</p>
               <p class="mt-1 text-xl font-extrabold">
                 <Money :value="partnerStats.paid" />
               </p>
             </div>
-            <div class="surface-card p-3.5">
-              <p class="section-label">Lifetime</p>
-              <p class="mt-1 text-xl font-extrabold">
-                <Money :value="partnerStats.earned" tone="profit" />
-              </p>
-            </div>
+          </div>
+          <div class="surface-card p-3.5">
+            <p class="section-label">Lifetime (paid orders)</p>
+            <p class="mt-1 text-xl font-extrabold">
+              <Money :value="partnerStats.earned" tone="profit" />
+            </p>
           </div>
         </div>
-        <p class="text-sm text-muted">
-          Orders you log are on the Orders tab.
+
+        <div v-if="partnerStats.recentSplits?.length">
+          <h2 class="section-label mb-3">Your commissions</h2>
+          <div class="space-y-2.5">
+            <button
+              v-for="s in partnerStats.recentSplits"
+              :key="s.id"
+              type="button"
+              class="list-card w-full text-left"
+              @click="openOrder(s.order_id)"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate font-bold">{{ s.customer_name }}</p>
+                  <p class="truncate text-sm text-muted">
+                    {{ s.product_name }}
+                  </p>
+                </div>
+                <StatusBadge :status="s.order_status" />
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-muted">{{ s.order_date }}</span>
+                <Money :value="s.amount" tone="owed" />
+              </div>
+            </button>
+          </div>
+        </div>
+        <p v-else class="text-sm text-muted">
+          No commissions yet. Linked orders (Delton or All) will show here.
         </p>
       </template>
     </template>

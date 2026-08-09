@@ -104,12 +104,17 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function logout() {
+async function logout() {
+  loading.value = true
+  try {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     user.value = null
     partner.value = null
+  } finally {
+    loading.value = false
   }
+}
 
   return {
     user,

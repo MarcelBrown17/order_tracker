@@ -4,11 +4,13 @@ import { useProductsStore } from '../stores/products'
 import Money from '../components/Money.vue'
 import BaseButton from '../components/BaseButton.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
+import AppLoader from '../components/AppLoader.vue'
+import { useToast } from '../composables/useToast'
 
 const productsStore = useProductsStore()
+const toast = useToast()
 
 const loading = ref(true)
-const error = ref('')
 const showForm = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
@@ -24,11 +26,10 @@ const form = ref(blank())
 
 async function load() {
   loading.value = true
-  error.value = ''
   try {
     await productsStore.fetchProducts({ admin: true })
   } catch (e) {
-    error.value = e.message || 'Failed to load products'
+    toast.error(e.message || 'Failed to load products')
   } finally {
     loading.value = false
   }
@@ -36,8 +37,8 @@ async function load() {
 
 onMounted(load)
 
-function profitPerPartner(p) {
-  return (Number(p.sell_price) - Number(p.cost_price)) / 3
+function profitMargin(p) {
+  return Number(p.sell_price) - Number(p.cost_price)
 }
 
 function openCreate() {
@@ -65,7 +66,6 @@ function closeForm() {
 
 async function onSubmit() {
   saving.value = true
-  error.value = ''
   try {
     const payload = {
       name: form.value.name.trim(),
@@ -75,12 +75,14 @@ async function onSubmit() {
     }
     if (editingId.value) {
       await productsStore.updateProduct(editingId.value, payload)
+      toast.success('Product updated')
     } else {
       await productsStore.createProduct(payload)
+      toast.success('Product created')
     }
     closeForm()
   } catch (e) {
-    error.value = e.message || 'Failed to save product'
+    toast.error(e.message || 'Failed to save product')
   } finally {
     saving.value = false
   }
@@ -89,14 +91,15 @@ async function onSubmit() {
 async function toggleActive(p) {
   try {
     await productsStore.updateProduct(p.id, { active: !p.active })
+    toast.success(p.active ? 'Product deactivated' : 'Product activated')
   } catch (e) {
-    error.value = e.message || 'Failed to update product'
+    toast.error(e.message || 'Failed to update product')
   }
 }
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="bakery-shell bakery-stack">
     <div class="flex items-start justify-between gap-3">
       <div>
         <h1 class="page-title">Products</h1>
@@ -105,20 +108,37 @@ async function toggleActive(p) {
       <BaseButton variant="primary" @click="openCreate">Add</BaseButton>
     </div>
 
-    <p v-if="loading" class="text-sm text-muted">Loading…</p>
-    <p v-if="error" class="text-sm text-red-700">{{ error }}</p>
+    <AppLoader v-if="loading" label="Loading products" />
 
     <div
-      v-if="showForm"
+      v-if="showForm && !loading"
       class="surface-card space-y-4 p-4"
     >
-      <h2 class="text-base font-bold">
-        {{ editingId ? 'Edit product' : 'New product' }}
-      </h2>
+      <div>
+        <button type="button" class="page-back" @click="closeForm">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          <span>Products</span>
+        </button>
+        <h2 class="mt-1 text-base font-bold">
+          {{ editingId ? 'Edit product' : 'New product' }}
+        </h2>
+      </div>
       <form class="space-y-0" @submit.prevent="onSubmit">
         <div class="form-section">
           <div class="form-field">
-            <label for="name">Name</label>
+            <label for="name">Name <span class="req" aria-hidden="true">*</span></label>
             <input id="name" v-model="form.name" required />
           </div>
         </div>
@@ -126,7 +146,7 @@ async function toggleActive(p) {
           <p class="section-label">Pricing</p>
           <div class="grid grid-cols-2 gap-3">
             <div class="form-field">
-              <label for="cost_price">Cost price</label>
+              <label for="cost_price">Cost price <span class="req" aria-hidden="true">*</span></label>
               <input
                 id="cost_price"
                 v-model.number="form.cost_price"
@@ -138,7 +158,7 @@ async function toggleActive(p) {
               />
             </div>
             <div class="form-field">
-              <label for="sell_price">Sell price</label>
+              <label for="sell_price">Sell price <span class="req" aria-hidden="true">*</span></label>
               <input
                 id="sell_price"
                 v-model.number="form.sell_price"
@@ -220,9 +240,9 @@ async function toggleActive(p) {
               </p>
             </div>
             <div class="stat-row__item">
-              <p class="stat-row__label">Split</p>
+              <p class="stat-row__label">Margin</p>
               <p class="stat-row__value">
-                <Money :value="profitPerPartner(p)" tone="profit" />
+                <Money :value="profitMargin(p)" tone="profit" />
               </p>
             </div>
           </div>
@@ -239,7 +259,7 @@ async function toggleActive(p) {
               <th>Name</th>
               <th>Cost</th>
               <th>Sell</th>
-              <th>Split / box</th>
+              <th>Margin</th>
               <th>Active</th>
               <th></th>
             </tr>
@@ -254,7 +274,7 @@ async function toggleActive(p) {
               <td class="font-semibold">{{ p.name }}</td>
               <td><Money :value="p.cost_price" /></td>
               <td><Money :value="p.sell_price" tone="owed" /></td>
-              <td><Money :value="profitPerPartner(p)" tone="profit" /></td>
+              <td><Money :value="profitMargin(p)" tone="profit" /></td>
               <td>
                 <ToggleSwitch
                   :model-value="p.active"
