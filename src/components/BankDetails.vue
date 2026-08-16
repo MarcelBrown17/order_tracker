@@ -13,23 +13,30 @@ const copiedId = ref('')
 const toast = useToast()
 
 const accounts = [
+  // {
+  //   id: 'discovery',
+  //   bank: 'Discovery Bank',
+  //   holder: 'Marcel Brown',
+  //   number: '15499225896',
+  // },
+  // {
+  //   id: 'standard',
+  //   bank: 'Standard Bank',
+  //   holder: 'Marcel Brown',
+  //   number: '073678902',
+  // },
+  // {
+  //   id: 'capitec',
+  //   bank: 'Capitec',
+  //   holder: 'Marcel Brown',
+  //   number: '2324219081',
+  // },
   {
-    id: 'discovery',
-    bank: 'Discovery Bank',
-    holder: 'Marcel Brown',
-    number: '15499225896',
-  },
-  {
-    id: 'standard',
-    bank: 'Standard Bank',
-    holder: 'Marcel Brown',
-    number: '073678902',
-  },
-  {
-    id: 'capitec',
-    bank: 'Capitec',
-    holder: 'Marcel Brown',
-    number: '2324219081',
+    id: 'gotyme',
+    bank: 'GoTyme Bank',
+    holder: 'DILLAN CHAD DAVIDS',
+    number: '53001059034',
+    branch: '678910',
   },
 ]
 
@@ -80,13 +87,14 @@ async function copyText(id, text, successMessage) {
 }
 
 async function copyAccount(account) {
-  const text = [
+  const lines = [
     `Bank: ${account.bank}`,
     `Account holder: ${account.holder}`,
     `Account number: ${account.number.replace(/\s+/g, '')}`,
-    'Reference: use your name',
-  ].join('\n')
-  await copyText(account.id, text, `${account.bank} details copied`)
+  ]
+  if (account.branch) lines.push(`Branch code: ${account.branch}`)
+  lines.push('Reference: use your name')
+  await copyText(account.id, lines.join('\n'), `${account.bank} details copied`)
 }
 </script>
 
@@ -125,7 +133,7 @@ async function copyAccount(account) {
           Payment methods
         </h2>
         <p class="mt-0.5 text-xs text-muted">
-          EFT details for biscuit orders.
+          EFT details for orders.
         </p>
       </div>
       <button
@@ -213,6 +221,10 @@ async function copyAccount(account) {
           <div class="flex justify-between gap-3">
             <span class="text-muted">Account number</span>
             <span class="text-right font-bold tabular-nums text-text">{{ account.number }}</span>
+          </div>
+          <div v-if="account.branch" class="flex justify-between gap-3">
+            <span class="text-muted">Branch code</span>
+            <span class="text-right font-semibold tabular-nums text-text">{{ account.branch }}</span>
           </div>
         </div>
       </div>
