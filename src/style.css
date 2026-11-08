@@ -1023,7 +1023,7 @@ html.dark .toast--error .toast__icon {
   height: 70%;
 }
 
-.product-pick__thumb--photo :deep(.product-art-photo),
+.product-pick__thumb--photo .product-art-photo,
 .product-pick__thumb img {
   width: 100%;
   height: 100%;

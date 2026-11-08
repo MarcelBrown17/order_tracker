@@ -7,3 +7,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# The Supabase publishable (anon) key and project URL are intended for
+# client-side use, so they are expected to appear in the built bundle.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_PUBLISHABLE_KEY,VITE_SUPABASE_URL"
