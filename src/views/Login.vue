@@ -4,6 +4,7 @@ import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../composables/useTheme'
 import { useToast } from '../composables/useToast'
+import BrandLogo from '../components/BrandLogo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -42,22 +43,35 @@ async function onSubmit() {
 
 <template>
   <div class="login-page">
+    <p class="login-announce">Baked in small batches. Packed by hand.</p>
     <div class="login-shell">
       <div class="login-topbar">
-        <RouterLink to="/" class="login-brand">
-          <span class="login-brand__dot" aria-hidden="true" />Biscuits
+        <RouterLink to="/" class="brand-logo">
+          <BrandLogo />
         </RouterLink>
-        <RouterLink to="/" class="login-back">Order biscuits</RouterLink>
+        <RouterLink to="/" class="pill-btn">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 8h14l-1.2 11H6.2z" />
+            <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+          </svg>
+          Order
+        </RouterLink>
       </div>
 
       <div class="login-hero">
-        <h1>Welcome<br />back</h1>
+        <h1>Welcome back</h1>
         <p>Sign in to manage orders, products, and partners.</p>
       </div>
 
       <form class="login-card" @submit.prevent="onSubmit">
-        <p class="login-eyebrow">Sign in</p>
-
         <div class="login-field">
           <label for="email">
             Email <span class="login-req" aria-hidden="true">*</span>
@@ -102,46 +116,34 @@ async function onSubmit() {
 
 <style scoped>
 .login-page {
-  --lq-blush: #f2c6b4;
-  --lq-blush-soft: #f7d9c8;
-  --lq-terracotta: #d97d54;
-  --lq-terracotta-dark: #c2673f;
-  --lq-cream: #fff8f0;
-  --lq-sage: #8b9a7a;
-  --lq-sage-dark: #71806a;
-  --lq-espresso: #3b2a20;
-  --lq-espresso-soft: #6b564a;
-  --lq-card: #ffffff;
-  --lq-line: #ecdfd5;
-  --lq-field: #fefcf9;
-  --lq-radius-lg: 1.5rem;
-  --lq-radius-sm: 0.625rem;
+  --lq-ink: #2a1a12;
+  --lq-ink-soft: #5a4338;
+  --lq-cream: #fff9ee;
+  --lq-accent: #c2255c;
+  --lq-accent-dark: #a01d4b;
+  --lq-butter: #f5c84b;
+  --lq-pink: #f7c9d4;
 
-  position: relative;
-  overflow: hidden;
   min-height: 100dvh;
-  background: linear-gradient(135deg, var(--lq-blush) 0%, var(--lq-blush-soft) 100%);
-  color: var(--lq-espresso);
+  background: var(--lq-cream);
+  color: var(--lq-ink);
+  font-family: var(--font-sans);
 }
 
-.login-page::after {
-  content: '';
-  position: absolute;
-  top: -1.875rem;
-  right: -1.875rem;
-  width: 8.75rem;
-  height: 8.75rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--lq-terracotta) 18%, transparent);
-  pointer-events: none;
+.login-announce {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: var(--lq-ink);
+  color: var(--lq-cream);
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .login-shell {
-  position: relative;
-  z-index: 1;
-  width: min(25rem, 100%);
+  width: min(27rem, 100%);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 2.5rem;
+  padding: 1rem 1.25rem 2.5rem;
 }
 
 .login-topbar {
@@ -151,90 +153,36 @@ async function onSubmit() {
   gap: 1rem;
 }
 
-.login-brand {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: 'Fraunces', var(--font-sans);
-  font-size: 1.375rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--lq-terracotta-dark);
-  text-decoration: none;
-}
-
-.login-brand__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--lq-sage);
-}
-
-.login-back {
-  display: inline-flex;
-  height: 2.375rem;
-  align-items: center;
-  padding: 0 1rem;
-  border: 1px solid color-mix(in srgb, #fff 80%, transparent);
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, #fff 60%, transparent);
-  color: var(--lq-espresso);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 .login-hero {
-  margin-top: 1.6rem;
-  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: 2rem;
+  background: var(--lq-butter);
 }
 
 .login-hero h1 {
-  margin: 0 0 0.625rem;
-  font-family: 'Fraunces', var(--font-sans);
-  font-size: clamp(1.85rem, 7vw, 1.875rem);
-  font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  color: var(--lq-espresso);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 10vw, 2.75rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
 }
 
 .login-hero p {
   margin: 0;
-  max-width: 18rem;
-  color: var(--lq-espresso-soft);
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
-  font-weight: 500;
 }
 
 .login-card {
   padding: 1.25rem 1.125rem 1.375rem;
-  border: 1px solid color-mix(in srgb, #fff 70%, var(--lq-line));
-  border-radius: var(--lq-radius-lg);
-  background: var(--lq-card);
-  box-shadow: 0 18px 40px -18px rgba(59, 42, 32, 0.28);
-}
-
-.login-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 1rem;
-  color: var(--lq-sage-dark);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.login-eyebrow::before {
-  content: '';
-  width: 0.875rem;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--lq-terracotta);
+  border: 2px solid var(--lq-ink);
+  border-radius: 1.75rem;
+  background: #fff;
 }
 
 .login-field {
@@ -242,65 +190,66 @@ async function onSubmit() {
 }
 
 .login-field--last {
-  margin-bottom: 1.15rem;
+  margin-bottom: 1.25rem;
 }
 
 .login-field label {
   display: block;
   margin-bottom: 0.45rem;
-  color: var(--lq-espresso);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
 .login-req {
-  color: var(--lq-terracotta);
+  color: var(--lq-accent);
 }
 
 .login-field input {
   width: 100%;
-  border: 1.5px solid var(--lq-line);
-  border-radius: var(--lq-radius-sm);
-  background: var(--lq-field);
-  color: var(--lq-espresso);
+  height: auto;
+  min-height: 3.25rem;
+  max-height: none;
+  border: 2px solid var(--lq-ink);
+  border-radius: 999px;
+  background: var(--lq-cream);
+  color: var(--lq-ink);
   font: inherit;
-  font-size: 0.875rem;
-  padding: 0.75rem 0.875rem;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+  padding: 0.75rem 1.25rem;
   outline: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .login-field input::placeholder {
-  color: #c9baae;
+  color: color-mix(in srgb, var(--lq-ink-soft) 60%, transparent);
 }
 
 .login-field input:focus {
-  border-color: var(--lq-terracotta);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--lq-terracotta) 14%, transparent);
+  border-color: var(--lq-ink);
+  box-shadow: 0 0 0 3px var(--lq-pink);
 }
 
 .login-send {
   display: inline-flex;
   width: 100%;
+  min-height: 3.25rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   border: none;
-  border-radius: 0.875rem;
-  padding: 0.875rem 1.5rem;
-  background: var(--lq-terracotta);
+  border-radius: 999px;
+  padding: 0 1.5rem;
+  background: var(--lq-accent);
   color: #fff;
   font: inherit;
-  font-size: 0.90625rem;
-  font-weight: 800;
-  box-shadow: 0 10px 20px -8px color-mix(in srgb, var(--lq-terracotta) 55%, transparent);
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .login-send:hover:not(:disabled) {
-  background: var(--lq-terracotta-dark);
+  background: var(--lq-accent-dark);
 }
 
 .login-send:disabled {
@@ -311,13 +260,13 @@ async function onSubmit() {
 .login-footnote {
   margin: 1rem 0 0;
   text-align: center;
-  color: var(--lq-espresso-soft);
+  color: var(--lq-ink-soft);
   font-size: 0.875rem;
 }
 
 .login-footnote a {
-  color: var(--lq-terracotta);
-  font-weight: 800;
+  color: var(--lq-accent);
+  font-weight: 700;
   text-decoration: none;
 }
 </style>

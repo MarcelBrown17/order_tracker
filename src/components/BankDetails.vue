@@ -13,12 +13,12 @@ const copiedId = ref('')
 const toast = useToast()
 
 const accounts = [
-  // {
-  //   id: 'discovery',
-  //   bank: 'Discovery Bank',
-  //   holder: 'Marcel Brown',
-  //   number: '15499225896',
-  // },
+  {
+    id: 'discovery',
+    bank: 'Discovery Bank',
+    holder: 'Marcel Brown',
+    number: '15499225896',
+  },
   // {
   //   id: 'standard',
   //   bank: 'Standard Bank',
@@ -31,17 +31,16 @@ const accounts = [
   //   holder: 'Marcel Brown',
   //   number: '2324219081',
   // },
-  {
-    id: 'gotyme',
-    bank: 'GoTyme Bank',
-    holder: 'DILLAN CHAD DAVIDS',
-    number: '53001059034',
-    branch: '678910',
-  },
+  // {
+  //   id: 'gotyme',
+  //   bank: 'GoTyme Bank',
+  //   holder: 'DILLAN CHAD DAVIDS',
+  //   number: '53001059034',
+  //   branch: '678910',
+  // },
 ]
 
 const contact = {
-  email: 'marcelbrown413@gmail.com',
   phone: '0812721154',
   phoneHref: 'tel:+27812721154',
 }
@@ -233,15 +232,6 @@ async function copyAccount(account) {
         <p class="font-bold text-text">Need help?</p>
         <p class="mt-0.5 text-xs text-muted">Questions about an order or payment.</p>
         <div class="mt-3 space-y-1 text-sm">
-          <div class="flex justify-between gap-3">
-            <span class="text-muted">Email</span>
-            <a
-              class="contact-link min-w-0 text-right font-semibold text-accent"
-              :href="`mailto:${contact.email}`"
-            >
-              {{ contact.email }}
-            </a>
-          </div>
           <div class="flex justify-between gap-3">
             <span class="text-muted">Phone</span>
             <a

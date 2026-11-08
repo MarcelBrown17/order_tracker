@@ -10,6 +10,7 @@ import ToggleSwitch from '../components/ToggleSwitch.vue'
 import BaseSelect from '../components/BaseSelect.vue'
 import AppLoader from '../components/AppLoader.vue'
 import { useToast } from '../composables/useToast'
+import { groupProducts } from '../lib/productGroups'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -45,6 +46,7 @@ const loading = ref(false)
 const saving = ref(false)
 
 const products = computed(() => productsStore.products)
+const productGroups = computed(() => groupProducts(products.value))
 
 function qty(productId) {
   return Number(cart.value[productId] || 0)
@@ -223,48 +225,51 @@ async function onSubmit() {
 
       <div class="surface-card space-y-3 p-4 md:p-5">
         <div class="flex items-center justify-between gap-3">
-          <p class="section-label !mb-0">Biscuits</p>
+          <p class="section-label !mb-0">Products</p>
           <p v-if="orderTotal" class="text-sm font-bold tabular-nums">
             <Money :value="orderTotal" />
           </p>
         </div>
 
         <p v-if="!products.length" class="text-sm text-muted">
-          No biscuits available right now.
+          No products available right now.
         </p>
 
-        <div v-else class="product-pick-list">
-          <div
-            v-for="product in products"
-            :key="product.id"
-            class="product-pick"
-            :class="{ 'product-pick--active': qty(product.id) > 0 }"
-          >
-            <div class="product-pick__info">
-              <p class="product-pick__name">{{ product.name }}</p>
-              <p class="product-pick__price">
-                <Money :value="product.sell_price" /> each
-              </p>
-            </div>
-            <div class="product-stepper">
-              <button
-                type="button"
-                class="product-stepper__btn product-stepper__btn--minus"
-                :disabled="qty(product.id) <= 0"
-                aria-label="Decrease quantity"
-                @click="removeOne(product.id)"
-              >
-                −
-              </button>
-              <span class="product-stepper__qty">{{ qty(product.id) }}</span>
-              <button
-                type="button"
-                class="product-stepper__btn"
-                aria-label="Increase quantity"
-                @click="addOne(product.id)"
-              >
-                +
-              </button>
+        <div v-for="group in productGroups" :key="group.key" class="product-group">
+          <p class="product-group__title">{{ group.label }}</p>
+          <div class="product-pick-list">
+            <div
+              v-for="product in group.items"
+              :key="product.id"
+              class="product-pick"
+              :class="{ 'product-pick--active': qty(product.id) > 0 }"
+            >
+              <div class="product-pick__info">
+                <p class="product-pick__name">{{ product.name }}</p>
+                <p class="product-pick__price">
+                  <Money :value="product.sell_price" /> each
+                </p>
+              </div>
+              <div class="product-stepper">
+                <button
+                  type="button"
+                  class="product-stepper__btn product-stepper__btn--minus"
+                  :disabled="qty(product.id) <= 0"
+                  aria-label="Decrease quantity"
+                  @click="removeOne(product.id)"
+                >
+                  −
+                </button>
+                <span class="product-stepper__qty">{{ qty(product.id) }}</span>
+                <button
+                  type="button"
+                  class="product-stepper__btn"
+                  aria-label="Increase quantity"
+                  @click="addOne(product.id)"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         </div>

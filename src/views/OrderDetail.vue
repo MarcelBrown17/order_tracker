@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import { sellTotal } from '../lib/orderGroups'
+import { groupProducts } from '../lib/productGroups'
 import Money from '../components/Money.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import BaseButton from '../components/BaseButton.vue'
@@ -55,7 +56,7 @@ const editableProducts = computed(() => {
     if (!byId.has(line.product_id)) {
       byId.set(line.product_id, {
         id: line.product_id,
-        name: line.product_name || 'Biscuit',
+        name: line.product_name || 'Product',
         sell_price: Number(line.unit_sell_price),
         cost_price: Number(line.unit_cost),
         active: false,
@@ -66,6 +67,10 @@ const editableProducts = computed(() => {
     String(a.name).localeCompare(String(b.name))
   )
 })
+
+const editableProductGroups = computed(() =>
+  groupProducts(editableProducts.value)
+)
 
 const canManageOrder = computed(() => {
   if (!auth.partner || !lines.value.length) return false
@@ -440,84 +445,91 @@ async function togglePaid(split) {
 
         <div class="surface-card space-y-3 p-4 md:p-5">
           <div class="flex items-center justify-between gap-3">
-            <p class="section-label !mb-0">Biscuits</p>
+            <p class="section-label !mb-0">Products</p>
             <p class="text-sm font-bold tabular-nums">
               <Money :value="liveSellTotal" />
             </p>
           </div>
 
-          <div class="product-pick-list">
-            <div
-              v-for="product in editableProducts"
-              :key="product.id"
-              class="product-pick"
-              :class="{ 'product-pick--active': qty(product.id) > 0 }"
-            >
-              <div class="product-pick__info min-w-0">
-                <p class="product-pick__name">{{ product.name }}</p>
-                <p class="product-pick__price">
-                  <Money :value="unitPrice(product.id)" /> each
-                </p>
-                <!-- Price edits live on the Products tab
-                <div
-                  v-if="auth.isAdmin && qty(product.id) > 0 && lineMeta[product.id]"
-                  class="mt-1.5"
-                >
-                  <div class="form-field mb-0">
-                    <label :for="`price_${product.id}`">Price each</label>
+          <div
+            v-for="group in editableProductGroups"
+            :key="group.key"
+            class="product-group"
+          >
+            <p class="product-group__title">{{ group.label }}</p>
+            <div class="product-pick-list">
+              <div
+                v-for="product in group.items"
+                :key="product.id"
+                class="product-pick"
+                :class="{ 'product-pick--active': qty(product.id) > 0 }"
+              >
+                <div class="product-pick__info min-w-0">
+                  <p class="product-pick__name">{{ product.name }}</p>
+                  <p class="product-pick__price">
+                    <Money :value="unitPrice(product.id)" /> each
+                  </p>
+                  <!-- Price edits live on the Products tab
+                  <div
+                    v-if="auth.isAdmin && qty(product.id) > 0 && lineMeta[product.id]"
+                    class="mt-1.5"
+                  >
+                    <div class="form-field mb-0">
+                      <label :for="`price_${product.id}`">Price each</label>
+                      <input
+                        :id="`price_${product.id}`"
+                        v-model.number="lineMeta[product.id].unit_sell_price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </div>
+                  -->
+                  <!-- Bulk orders hidden until we get bulk receipts
+                  <ToggleSwitch
+                    v-model="lineMeta[product.id].is_bulk"
+                    label="Bulk order"
+                    description="Override unit cost for this line"
+                    compact
+                  />
+                  <div
+                    v-if="lineMeta[product.id].is_bulk"
+                    class="form-field bulk-highlight mb-0"
+                  >
+                    <label :for="`cost_${product.id}`">Unit cost</label>
                     <input
-                      :id="`price_${product.id}`"
-                      v-model.number="lineMeta[product.id].unit_sell_price"
+                      :id="`cost_${product.id}`"
+                      v-model.number="lineMeta[product.id].unit_cost"
                       type="number"
                       min="0"
                       step="0.01"
                       inputmode="decimal"
                     />
                   </div>
+                  -->
                 </div>
-                -->
-                <!-- Bulk orders hidden until we get bulk receipts
-                <ToggleSwitch
-                  v-model="lineMeta[product.id].is_bulk"
-                  label="Bulk order"
-                  description="Override unit cost for this line"
-                  compact
-                />
-                <div
-                  v-if="lineMeta[product.id].is_bulk"
-                  class="form-field bulk-highlight mb-0"
-                >
-                  <label :for="`cost_${product.id}`">Unit cost</label>
-                  <input
-                    :id="`cost_${product.id}`"
-                    v-model.number="lineMeta[product.id].unit_cost"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputmode="decimal"
-                  />
+                <div class="product-stepper">
+                  <button
+                    type="button"
+                    class="product-stepper__btn product-stepper__btn--minus"
+                    :disabled="qty(product.id) <= 0"
+                    aria-label="Decrease quantity"
+                    @click="removeOne(product.id)"
+                  >
+                    −
+                  </button>
+                  <span class="product-stepper__qty">{{ qty(product.id) }}</span>
+                  <button
+                    type="button"
+                    class="product-stepper__btn"
+                    aria-label="Increase quantity"
+                    @click="addOne(product.id)"
+                  >
+                    +
+                  </button>
                 </div>
-                -->
-              </div>
-              <div class="product-stepper">
-                <button
-                  type="button"
-                  class="product-stepper__btn product-stepper__btn--minus"
-                  :disabled="qty(product.id) <= 0"
-                  aria-label="Decrease quantity"
-                  @click="removeOne(product.id)"
-                >
-                  −
-                </button>
-                <span class="product-stepper__qty">{{ qty(product.id) }}</span>
-                <button
-                  type="button"
-                  class="product-stepper__btn"
-                  aria-label="Increase quantity"
-                  @click="addOne(product.id)"
-                >
-                  +
-                </button>
               </div>
             </div>
           </div>

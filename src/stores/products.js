@@ -13,7 +13,7 @@ export const useProductsStore = defineStore('products', () => {
     // Partners never receive cost_price from the API select
     const columns = admin
       ? '*'
-      : 'id, name, sell_price, active, created_at'
+      : 'id, name, sell_price, category, active, created_at'
     let query = supabase.from('products').select(columns).order('name')
     if (activeOnly) query = query.eq('active', true)
     const { data, error: err } = await query

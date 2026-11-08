@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../composables/useTheme'
 import BankDetails from './BankDetails.vue'
 import AppLoader from './AppLoader.vue'
+import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -76,11 +77,8 @@ onMounted(() => {
         class="hidden md:flex md:h-full md:w-56 md:shrink-0 md:flex-col md:overflow-y-auto md:border-r md:border-border md:bg-surface"
       >
         <div class="border-b border-border p-4">
-          <RouterLink
-            :to="{ name: 'request-biscuits' }"
-            class="brand-mark text-xl"
-          >
-            <span class="brand-dot" aria-hidden="true" />Biscuits
+          <RouterLink :to="{ name: 'request-biscuits' }" class="brand-logo">
+            <BrandLogo />
           </RouterLink>
           <p class="mt-1 text-sm text-muted">
             {{ auth.isAdmin ? 'Admin' : auth.partner?.name || 'Partner' }}
@@ -121,11 +119,8 @@ onMounted(() => {
         <!-- Mobile top bar -->
         <header class="app-topbar md:hidden">
           <div class="min-w-0">
-            <RouterLink
-              :to="{ name: 'request-biscuits' }"
-              class="brand-mark truncate text-lg"
-            >
-              <span class="brand-dot" aria-hidden="true" />Biscuits
+            <RouterLink :to="{ name: 'request-biscuits' }" class="brand-logo">
+              <BrandLogo small />
             </RouterLink>
             <p class="truncate text-xs font-semibold text-muted">
               {{ auth.partner?.name || 'Partner' }}
