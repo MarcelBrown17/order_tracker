@@ -4,11 +4,23 @@ defineProps({
     type: Object,
     required: true,
   },
+  alt: {
+    type: String,
+    default: '',
+  },
 })
 </script>
 
 <template>
-  <svg viewBox="0 0 200 200" aria-hidden="true">
+  <img
+    v-if="art.image"
+    class="product-art-photo"
+    :src="art.image"
+    :alt="alt"
+    loading="lazy"
+    decoding="async"
+  />
+  <svg v-else viewBox="0 0 200 200" aria-hidden="true">
     <template v-if="art.shape === 'sandwich'">
       <circle cx="92" cy="112" r="72" :fill="art.tone" />
       <circle cx="100" cy="104" r="68" :fill="art.dot" />
@@ -95,3 +107,13 @@ defineProps({
     </template>
   </svg>
 </template>
+
+<style scoped>
+.product-art-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+</style>

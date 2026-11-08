@@ -514,6 +514,38 @@ html.dark .surface-card {
   color: var(--color-accent);
 }
 
+.icon-action--sm {
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: 0.7rem;
+}
+
+.icon-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.icon-action--success {
+  color: #0369a1;
+}
+
+.icon-action--success:hover,
+.icon-action--success:active {
+  border-color: color-mix(in srgb, #0369a1 40%, var(--color-border));
+  background: color-mix(in srgb, #0369a1 10%, var(--color-surface));
+  color: #075985;
+}
+
+html.dark .icon-action--success {
+  color: #7dd3fc;
+}
+
+html.dark .icon-action--success:hover,
+html.dark .icon-action--success:active {
+  color: #bae6fd;
+  background: color-mix(in srgb, #0ea5e9 14%, var(--color-surface));
+}
+
 .icon-action--danger {
   color: #b91c1c;
 }
@@ -972,6 +1004,30 @@ html.dark .toast--error .toast__icon {
 .product-pick--active {
   border-color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+}
+
+.product-pick__thumb {
+  display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  background: var(--color-page);
+}
+
+.product-pick__thumb svg {
+  width: 70%;
+  height: 70%;
+}
+
+.product-pick__thumb--photo :deep(.product-art-photo),
+.product-pick__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .product-pick__info {

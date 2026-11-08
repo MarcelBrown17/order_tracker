@@ -9,8 +9,10 @@ import BaseButton from '../components/BaseButton.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import BaseSelect from '../components/BaseSelect.vue'
 import AppLoader from '../components/AppLoader.vue'
+import ProductArt from '../components/ProductArt.vue'
 import { useToast } from '../composables/useToast'
 import { groupProducts } from '../lib/productGroups'
+import { productArt } from '../lib/productArt'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -20,10 +22,8 @@ const toast = useToast()
 
 const form = ref({
   customer_name: '',
-  company: '',
   order_date: new Date().toISOString().slice(0, 10),
   pay_eom: false,
-  notes: '',
   order_type: 'admin',
 })
 
@@ -47,6 +47,10 @@ const saving = ref(false)
 
 const products = computed(() => productsStore.products)
 const productGroups = computed(() => groupProducts(products.value))
+
+function artFor(product, index = 0) {
+  return productArt(product, index)
+}
 
 function qty(productId) {
   return Number(cart.value[productId] || 0)
@@ -147,10 +151,8 @@ async function onSubmit() {
   try {
     const shared = {
       customer_name: form.value.customer_name.trim(),
-      company: form.value.company.trim() || null,
       order_date: form.value.order_date,
       date_paid: resolvedDatePaid.value,
-      notes: form.value.notes.trim() || null,
       created_by: auth.partner?.id ?? null,
       order_type: resolvedOrderType.value,
     }
@@ -201,10 +203,6 @@ async function onSubmit() {
             placeholder="Customer full name"
           />
         </div>
-        <div class="form-field">
-          <label for="company">Company</label>
-          <input id="company" v-model="form.company" placeholder="Company name" />
-        </div>
         <div v-if="auth.isAdmin" class="form-field">
           <label for="order_type">
             Link order to <span class="req" aria-hidden="true">*</span>
@@ -239,11 +237,22 @@ async function onSubmit() {
           <p class="product-group__title">{{ group.label }}</p>
           <div class="product-pick-list">
             <div
-              v-for="product in group.items"
+              v-for="(product, index) in group.items"
               :key="product.id"
               class="product-pick"
               :class="{ 'product-pick--active': qty(product.id) > 0 }"
             >
+              <div
+                class="product-pick__thumb"
+                :class="{ 'product-pick__thumb--photo': artFor(product, index).image }"
+                :style="
+                  artFor(product, index).image
+                    ? undefined
+                    : { background: artFor(product, index).bg }
+                "
+              >
+                <ProductArt :art="artFor(product, index)" :alt="product.name" />
+              </div>
               <div class="product-pick__info">
                 <p class="product-pick__name">{{ product.name }}</p>
                 <p class="product-pick__price">
@@ -276,7 +285,7 @@ async function onSubmit() {
       </div>
 
       <div class="surface-card space-y-3 p-4 md:p-5">
-        <p class="section-label">Payment & notes</p>
+        <p class="section-label">Payment</p>
         <div class="form-field">
           <label for="order_date">
             Order date <span class="req" aria-hidden="true">*</span>
@@ -284,15 +293,6 @@ async function onSubmit() {
           <input id="order_date" v-model="form.order_date" type="date" required />
         </div>
         <ToggleSwitch v-model="form.pay_eom" label="Pay end of month" />
-        <div class="form-field">
-          <label for="notes">Notes</label>
-          <textarea
-            id="notes"
-            v-model="form.notes"
-            rows="3"
-            placeholder="Anything useful for the team"
-          />
-        </div>
       </div>
 
       <div

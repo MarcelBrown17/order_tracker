@@ -12,7 +12,6 @@ export function groupOrders(orders) {
         id: order.id,
         groupId,
         customer_name: order.customer_name,
-        company: order.company,
         order_date: order.order_date,
         status: order.status,
         order_type: order.order_type || 'admin',

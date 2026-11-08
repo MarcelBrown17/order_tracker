@@ -153,9 +153,7 @@ async function checkout() {
   try {
     const { error } = await supabase.rpc('submit_biscuit_request', {
       p_customer_name: name,
-      p_company: null,
       p_contact: null,
-      p_notes: null,
       p_items: cartItems.value.map((item) => ({
         product_id: item.id,
         quantity: item.quantity,
@@ -322,8 +320,12 @@ function startAgain() {
             :key="product.id"
             class="shop-card"
           >
-            <div class="shop-card__art" :style="{ background: product.art.bg }">
-              <ProductArt :art="product.art" />
+            <div
+              class="shop-card__art"
+              :class="{ 'shop-card__art--photo': product.art.image }"
+              :style="product.art.image ? undefined : { background: product.art.bg }"
+            >
+              <ProductArt :art="product.art" :alt="product.name" />
             </div>
             <div class="shop-card__body">
               <span class="shop-card__category">
@@ -412,8 +414,12 @@ function startAgain() {
                 :key="item.id"
                 class="shop-line"
               >
-                <div class="shop-line__thumb" :style="{ background: item.art.bg }">
-                  <ProductArt :art="item.art" />
+                <div
+                  class="shop-line__thumb"
+                  :class="{ 'shop-line__thumb--photo': item.art.image }"
+                  :style="item.art.image ? undefined : { background: item.art.bg }"
+                >
+                  <ProductArt :art="item.art" :alt="item.name" />
                 </div>
                 <div class="shop-line__info">
                   <span class="shop-line__name">{{ item.name }}</span>
@@ -557,9 +563,12 @@ function startAgain() {
 
 .shop-hero {
   display: flex;
+  /* Align yellow box with logo ↔ cart (header uses 1.25rem side padding) */
+  width: calc(100% - 2.5rem);
+  max-width: calc(85rem - 2.5rem);
+  margin: 0 auto;
   align-items: center;
   gap: 2rem;
-  margin: 0 1rem;
   padding: 2rem 1.5rem;
   border-radius: 2rem;
   background: var(--sf-butter);
@@ -691,11 +700,21 @@ function startAgain() {
   align-items: center;
   justify-content: center;
   border-radius: 1.25rem;
+  overflow: hidden;
 }
 
 .shop-card__art svg {
   width: 72%;
   height: 72%;
+}
+
+.shop-card__art--photo {
+  background: var(--sf-cream, #fff8f0);
+}
+
+.shop-card__art--photo :deep(.product-art-photo) {
+  width: 100%;
+  height: 100%;
 }
 
 .shop-card__body {
@@ -922,11 +941,21 @@ function startAgain() {
   align-items: center;
   justify-content: center;
   border-radius: 1rem;
+  overflow: hidden;
 }
 
 .shop-line__thumb svg {
   width: 70%;
   height: 70%;
+}
+
+.shop-line__thumb--photo {
+  background: var(--sf-cream, #fff8f0);
+}
+
+.shop-line__thumb--photo :deep(.product-art-photo) {
+  width: 100%;
+  height: 100%;
 }
 
 .shop-line__info {
@@ -1152,7 +1181,10 @@ function startAgain() {
   }
 
   .shop-hero {
-    margin: 0 1.5rem;
+    width: calc(100% - 6rem);
+    max-width: calc(85rem - 6rem);
+    margin-left: auto;
+    margin-right: auto;
     padding: 4rem 3rem;
     border-radius: 2.5rem;
   }

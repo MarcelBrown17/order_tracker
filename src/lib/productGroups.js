@@ -1,6 +1,6 @@
 export const PRODUCT_CATEGORIES = [
   { value: 'biscuits', label: 'Biscuits' },
-  { value: 'other', label: 'Pies & samoosas' },
+  { value: 'other', label: 'Savouries' },
 ]
 
 export function groupProducts(products) {

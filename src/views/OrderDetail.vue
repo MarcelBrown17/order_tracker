@@ -6,6 +6,7 @@ import { useOrdersStore } from '../stores/orders'
 import { useProductsStore } from '../stores/products'
 import { sellTotal } from '../lib/orderGroups'
 import { groupProducts } from '../lib/productGroups'
+import { formatDate } from '../lib/formatDate'
 import Money from '../components/Money.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import BaseButton from '../components/BaseButton.vue'
@@ -28,10 +29,8 @@ const dirty = ref(false)
 
 const form = ref({
   customer_name: '',
-  company: '',
   order_date: '',
   pay_eom: false,
-  notes: '',
   order_type: 'admin',
 })
 const cart = ref({})
@@ -86,12 +85,6 @@ const isCancelled = computed(() => order.value?.status === 'cancelled')
 const isPaid = computed(() => order.value?.status === 'paid')
 const canEdit = computed(
   () => canManageOrder.value && !!order.value && !loading.value && !isCancelled.value
-)
-
-const payableSplitsTotal = computed(() =>
-  ordersStore.currentSplits
-    .filter((s) => !s.paid_out)
-    .reduce((sum, s) => sum + Number(s.amount || 0), 0)
 )
 
 const partnerSellTotal = computed(() =>
@@ -215,10 +208,8 @@ function hydrateForm() {
   const primary = lines.value[0]
   form.value = {
     customer_name: primary.customer_name || '',
-    company: primary.company || '',
     order_date: primary.order_date || today(),
     pay_eom: isLastDayOfMonth(primary.date_paid),
-    notes: primary.notes || '',
     order_type: primary.order_type || 'admin',
   }
 
@@ -262,11 +253,6 @@ async function load() {
       })
       hydrateForm()
     }
-
-    if (auth.isAdmin) {
-      const ids = ordersStore.currentOrderGroup.map((line) => line.id)
-      await ordersStore.fetchSplitsForGroup(ids)
-    }
   } catch (e) {
     toast.error(e.message || 'Failed to load order')
   } finally {
@@ -298,11 +284,9 @@ async function saveChanges() {
     const groupId = primary.order_group_id || primary.id
     const shared = {
       customer_name: form.value.customer_name.trim(),
-      company: form.value.company.trim() || null,
       customer_contact: primary.customer_contact || null,
       order_date: form.value.order_date,
       date_paid: resolvedDatePaid.value,
-      notes: form.value.notes.trim() || null,
       order_type: auth.isAdmin ? form.value.order_type : primary.order_type,
       status: primary.status,
       created_by: primary.created_by ?? auth.partner?.id ?? null,
@@ -382,23 +366,10 @@ async function onCancelOrder() {
 async function onMarkPaid() {
   await setStatus('paid')
 }
-
-async function togglePaid(split) {
-  if (!isPaid.value) {
-    toast.error('Mark the order as paid before paying partners')
-    return
-  }
-  try {
-    await ordersStore.setSplitPaid(split.id, !split.paid_out)
-    toast.success(!split.paid_out ? 'Marked paid out' : 'Marked unpaid')
-  } catch (e) {
-    toast.error(e.message || 'Failed to update payout')
-  }
-}
 </script>
 
 <template>
-  <div class="bakery-shell bakery-stack" :class="{ 'pb-24': dirty && canEdit }">
+  <div class="bakery-shell bakery-stack" :class="{ 'pb-24': canEdit }">
     <div>
       <PageBack label="Back" :fallback="{ name: 'orders' }" />
       <div class="mt-1 flex flex-wrap items-start justify-between gap-3">
@@ -423,10 +394,6 @@ async function togglePaid(split) {
           <div class="form-field">
             <label for="customer_name">Customer name <span class="req" aria-hidden="true">*</span></label>
             <input id="customer_name" v-model="form.customer_name" required />
-          </div>
-          <div class="form-field">
-            <label for="company">Company</label>
-            <input id="company" v-model="form.company" />
           </div>
           <div v-if="order?.customer_contact" class="rounded-xl bg-page px-3.5 py-3 text-sm">
             <p class="section-label">Contact</p>
@@ -536,16 +503,12 @@ async function togglePaid(split) {
         </div>
 
         <div class="surface-card space-y-3 p-4 md:p-5">
-          <p class="section-label">Payment & notes</p>
+          <p class="section-label">Payment</p>
           <div class="form-field">
             <label for="order_date">Order date <span class="req" aria-hidden="true">*</span></label>
             <input id="order_date" v-model="form.order_date" type="date" required />
           </div>
           <ToggleSwitch v-model="form.pay_eom" label="Pay end of month" />
-          <div class="form-field">
-            <label for="notes">Notes</label>
-            <textarea id="notes" v-model="form.notes" rows="2" />
-          </div>
         </div>
 
         <div
@@ -578,75 +541,7 @@ async function togglePaid(split) {
             No partner commission on this link
           </p>
         </div>
-
-        <div v-if="canManageOrder && !isCancelled" class="flex flex-col gap-2.5 sm:flex-row">
-          <BaseButton
-            v-if="!isPaid"
-            type="button"
-            variant="primary"
-            block
-            :disabled="statusSaving || dirty"
-            @click="onMarkPaid"
-          >
-            {{ statusSaving ? 'Saving…' : 'Mark paid' }}
-          </BaseButton>
-          <BaseButton
-            type="button"
-            variant="destructive"
-            block
-            :disabled="statusSaving || dirty"
-            @click="onCancelOrder"
-          >
-            {{ statusSaving ? 'Saving…' : 'Cancel order' }}
-          </BaseButton>
-        </div>
-        <p v-else-if="isCancelled" class="text-sm text-muted">
-          This order has been cancelled.
-        </p>
       </form>
-
-      <div v-if="auth.isAdmin" class="surface-card space-y-1 p-4">
-        <div class="mb-2 flex items-start justify-between gap-3">
-          <h2 class="section-label">Partner commissions</h2>
-          <p
-            v-if="isPaid && payableSplitsTotal > 0"
-            class="text-sm font-bold"
-          >
-            Payable <Money :value="payableSplitsTotal" tone="owed" />
-          </p>
-        </div>
-
-        <p v-if="!isPaid && !isCancelled" class="mb-3 text-sm text-muted">
-          Mark the order as paid before you can pay partners.
-        </p>
-
-        <div
-          v-for="split in ordersStore.currentSplits"
-          :key="split.id"
-          class="border-b border-border py-3 last:border-0 last:pb-0"
-        >
-          <div class="mb-2.5 flex items-center justify-between gap-3">
-            <p class="font-bold">{{ split.users?.name }}</p>
-            <Money :value="split.amount" tone="owed" />
-          </div>
-          <ToggleSwitch
-            :model-value="split.paid_out"
-            :disabled="!isPaid"
-            label="Mark paid"
-            :description="
-              !isPaid
-                ? 'Available once customer has paid'
-                : split.paid_out
-                  ? 'Paid out to partner'
-                  : 'Ready to pay now'
-            "
-            @update:model-value="togglePaid(split)"
-          />
-        </div>
-        <p v-if="!ordersStore.currentSplits.length" class="text-sm text-muted">
-          No commissions for this order
-        </p>
-      </div>
 
       <div v-if="dirty" class="order-save-bar">
         <p class="text-xs font-semibold text-muted sm:text-sm">Unsaved changes</p>
@@ -671,6 +566,33 @@ async function togglePaid(split) {
           </BaseButton>
         </div>
       </div>
+
+      <div v-else-if="canManageOrder" class="order-save-bar">
+        <p class="text-xs font-semibold text-muted sm:text-sm">
+          Total <Money :value="liveSellTotal" />
+        </p>
+        <div class="flex shrink-0 gap-2">
+          <BaseButton
+            type="button"
+            variant="destructive"
+            class="!min-h-10 !rounded-lg !px-3 !py-1.5"
+            :disabled="statusSaving"
+            @click="onCancelOrder"
+          >
+            Cancel order
+          </BaseButton>
+          <BaseButton
+            v-if="!isPaid"
+            type="button"
+            variant="primary"
+            class="!min-h-10 !rounded-lg !px-3 !py-1.5"
+            :disabled="statusSaving"
+            @click="onMarkPaid"
+          >
+            {{ statusSaving ? 'Saving…' : 'Mark paid' }}
+          </BaseButton>
+        </div>
+      </div>
     </template>
 
     <!-- Read-only (cancelled or no manage access) -->
@@ -678,7 +600,6 @@ async function togglePaid(split) {
       <div class="surface-card space-y-4 p-4">
         <div class="min-w-0">
           <p class="text-lg font-extrabold">{{ order.customer_name }}</p>
-          <p v-if="order.company" class="text-sm text-muted">{{ order.company }}</p>
           <p v-if="order.customer_contact" class="text-sm text-muted">
             {{ order.customer_contact }}
           </p>
@@ -708,15 +629,11 @@ async function togglePaid(split) {
           </div>
           <div>
             <p class="section-label">Order date</p>
-            <p class="mt-0.5 font-semibold">{{ order.order_date }}</p>
+            <p class="mt-0.5 font-semibold">{{ formatDate(order.order_date) }}</p>
           </div>
           <div>
             <p class="section-label">Date paid</p>
-            <p class="mt-0.5 font-semibold">{{ order.date_paid || '-' }}</p>
-          </div>
-          <div class="col-span-2">
-            <p class="section-label">Notes</p>
-            <p class="mt-0.5">{{ order.notes || '-' }}</p>
+            <p class="mt-0.5 font-semibold">{{ formatDate(order.date_paid) }}</p>
           </div>
         </div>
 

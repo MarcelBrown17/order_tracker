@@ -6,7 +6,6 @@ import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 type Line = {
   order_group_id: string
   customer_name: string
-  company: string | null
   order_date: string
   date_paid: string | null
   order_type: string
@@ -49,8 +48,14 @@ function toOrders(lines: Line[]): Order[] {
   for (const l of lines) {
     let o = map.get(l.order_group_id)
     if (!o) {
-      const who = l.company ? `${l.customer_name} (${l.company})` : l.customer_name
-      o = { id: l.order_group_id, customer: who, orderDate: l.order_date, datePaid: l.date_paid, items: '', total: 0 }
+      o = {
+        id: l.order_group_id,
+        customer: l.customer_name,
+        orderDate: l.order_date,
+        datePaid: l.date_paid,
+        items: '',
+        total: 0,
+      }
       map.set(l.order_group_id, o)
     }
     o.items += (o.items ? ', ' : '') + `${l.quantity}\u00A0x\u00A0${l.product_name}`

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
@@ -7,6 +7,7 @@ import Money from '../components/Money.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import AppLoader from '../components/AppLoader.vue'
 import { useToast } from '../composables/useToast'
+import { formatDate } from '../lib/formatDate'
 
 const auth = useAuthStore()
 const ordersStore = useOrdersStore()
@@ -39,6 +40,14 @@ onMounted(async () => {
 function openOrder(id) {
   router.push({ name: 'order-detail', params: { id } })
 }
+
+const commissionPartners = ['delton', 'richard']
+
+const partnerCards = computed(() =>
+  (stats.value?.partnerStats || []).filter((p) =>
+    commissionPartners.includes((p.name || '').toLowerCase())
+  )
+)
 </script>
 
 <template>
@@ -76,20 +85,6 @@ function openOrder(id) {
             <p class="mt-0.5 text-xs text-muted">This month</p>
           </div>
           <div class="surface-card p-3.5">
-            <p class="section-label">Revenue</p>
-            <p class="mt-1 text-xl font-extrabold">
-              <Money :value="stats.totalRevenueMonth" />
-            </p>
-            <p class="mt-0.5 text-xs text-muted">Paid orders this month</p>
-          </div>
-          <div class="surface-card p-3.5">
-            <p class="section-label">Profit</p>
-            <p class="mt-1 text-xl font-extrabold">
-              <Money :value="stats.totalProfitMonth" tone="profit" />
-            </p>
-            <p class="mt-0.5 text-xs text-muted">Paid orders this month</p>
-          </div>
-          <div class="surface-card p-3.5">
             <p class="section-label">Payable</p>
             <p class="mt-1 text-xl font-extrabold">
               <Money :value="stats.unpaidSplitsTotal" tone="owed" />
@@ -100,9 +95,9 @@ function openOrder(id) {
 
         <div>
           <h2 class="section-label mb-3">Partners</h2>
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div class="flex flex-col gap-3">
             <div
-              v-for="p in stats.partnerStats"
+              v-for="p in partnerCards"
               :key="p.id"
               class="surface-card space-y-2.5 p-3.5"
             >
@@ -148,8 +143,7 @@ function openOrder(id) {
                 <StatusBadge :status="o.status" />
               </div>
               <div class="flex items-center justify-between text-sm">
-                <span class="text-muted">{{ o.order_date }}</span>
-                <Money :value="o.profit_total" tone="profit" />
+                <span class="text-muted">{{ formatDate(o.order_date) }}</span>
               </div>
             </button>
             <p v-if="!stats.recentOrders.length" class="text-sm text-muted">
@@ -163,7 +157,6 @@ function openOrder(id) {
                   <th>Date</th>
                   <th>Customer</th>
                   <th>Product</th>
-                  <th>Profit</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -173,14 +166,13 @@ function openOrder(id) {
                   :key="o.id"
                   @click="openOrder(o.id)"
                 >
-                  <td>{{ o.order_date }}</td>
+                  <td>{{ formatDate(o.order_date) }}</td>
                   <td>{{ o.customer_name }}</td>
                   <td>{{ o.product_name }}</td>
-                  <td><Money :value="o.profit_total" tone="profit" /></td>
                   <td><StatusBadge :status="o.status" /></td>
                 </tr>
                 <tr v-if="!stats.recentOrders.length">
-                  <td colspan="5" class="text-muted">No orders yet</td>
+                  <td colspan="4" class="text-muted">No orders yet</td>
                 </tr>
               </tbody>
             </table>
@@ -242,7 +234,7 @@ function openOrder(id) {
                 <StatusBadge :status="s.order_status" />
               </div>
               <div class="flex items-center justify-between text-sm">
-                <span class="text-muted">{{ s.order_date }}</span>
+                <span class="text-muted">{{ formatDate(s.order_date) }}</span>
                 <Money :value="s.amount" tone="owed" />
               </div>
             </button>

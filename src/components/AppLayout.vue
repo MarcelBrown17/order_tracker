@@ -106,9 +106,6 @@ onMounted(() => {
           <p class="mb-3 truncate text-sm text-muted">
             {{ auth.user?.email }}
           </p>
-          <button type="button" class="app-logout mb-2 w-full" @click="toggleTheme">
-            {{ isDark ? 'Light mode' : 'Dark mode' }}
-          </button>
           <button type="button" class="app-logout app-logout--solid w-full" @click="logout">
             Log out
           </button>
